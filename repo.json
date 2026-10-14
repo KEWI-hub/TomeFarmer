@@ -14,6 +14,7 @@
                      "farm"
                  ],
         "DalamudApiLevel":  15,
+        "IconUrl":  "https://raw.githubusercontent.com/KEWI-hub/TomeFarmer/main/images/icon.png",
         "DownloadLinkInstall":  "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip",
         "DownloadLinkTesting":  "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip",
         "DownloadLinkUpdate":  "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip"
