@@ -1,0 +1,17 @@
+[
+  {
+    "Author": "KEWI-hub",
+    "Name": "TomeFarmer",
+    "InternalName": "TomeFarmer",
+    "AssemblyVersion": "1.0.0.0",
+    "Description": "Loops a chosen duty through AutoDuty and stops when your Mathematics target or run limit is reached. Tracks tomestones/hour per duty. Requires AutoDuty.",
+    "Punchline": "Make AutoDuty farm Allagan Tomestones of Mathematics.",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/KEWI-hub/TomeFarmer",
+    "Tags": [ "autoduty", "tomestone", "farm" ],
+    "DalamudApiLevel": 15,
+    "DownloadLinkInstall": "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip",
+    "DownloadLinkTesting": "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/KEWI-hub/TomeFarmer/releases/latest/download/latest.zip"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "Author": "KEWI-hub",
+  "Name": "TomeFarmer",
+  "Punchline": "Make AutoDuty farm Allagan Tomestones of Mathematics.",
+  "Description": "Loops a chosen duty through AutoDuty and stops when your Mathematics target or run limit is reached. Tracks tomestones/hour per duty. Requires AutoDuty.",
+  "Tags": [ "autoduty", "tomestone", "farm" ],
+  "RepoUrl": "https://github.com/KEWI-hub/TomeFarmer"
+}
