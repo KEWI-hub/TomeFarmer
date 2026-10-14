@@ -25,6 +25,11 @@ public sealed class FarmController : IDisposable
     public const int HoldingCap = 2000;
     private const int UnlimitedLoops = 9999;
 
+    // From game data: Storm/Serpent/Flame seals, Duck Bones (GCScripShopItem cost 600, rank Second Lieutenant).
+    private static readonly uint[] SealItemIds = { 20, 21, 22 };
+    public const uint DuckBonesItemId = 10119;
+    public const int DuckBonesSealCost = 600;
+
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan SettleTime = TimeSpan.FromSeconds(2);
 
@@ -39,6 +44,12 @@ public sealed class FarmController : IDisposable
     private bool wasInDuty;
     private bool pendingMeasure;
     private int zeroGainStreak;
+
+    // Post-run (GC turn-in) tracking for the newest log row, until the next duty starts.
+    private RunLogEntry? pendingLog;
+    private int sealsAtExit;
+    private int bonesAtExit;
+    private DateTime lastLogUpdate;
 
     public FarmState State { get; private set; } = FarmState.Idle;
     public string StatusText { get; private set; } = "Idle";
@@ -80,11 +91,14 @@ public sealed class FarmController : IDisposable
         ItemDisplayName = local is { } row && ItemId != 0 ? row.Name.ExtractText() : "(item not found)";
     }
 
-    public unsafe int GetTomestoneCount()
+    public int GetTomestoneCount() => ItemId == 0 ? 0 : GetItemCount(ItemId);
+
+    public static int GetSealCount() => SealItemIds.Sum(GetItemCount);
+
+    private static unsafe int GetItemCount(uint itemId)
     {
-        if (ItemId == 0) return 0;
         var im = InventoryManager.Instance();
-        return im == null ? 0 : im->GetInventoryItemCount(ItemId);
+        return im == null ? 0 : im->GetInventoryItemCount(itemId);
     }
 
     public void Start()
@@ -117,6 +131,7 @@ public sealed class FarmController : IDisposable
     {
         if (!IsRunning) return;
         if (!autoDuty.IsStopped()) autoDuty.Stop();
+        FinalizeLog();
         SetState(FarmState.Idle, reason);
         Print($"{reason}. Runs: {RunsCompleted}, gained: {SessionGained}.");
     }
@@ -150,6 +165,7 @@ public sealed class FarmController : IDisposable
         // Duty entry edge: snapshot count before rewards are granted.
         if (inDuty && !wasInDuty)
         {
+            FinalizeLog();
             dutyEnteredAt = DateTime.UtcNow;
             countAtEntry = GetTomestoneCount();
             StatusText = $"Run #{RunsCompleted + 1}: in duty";
@@ -171,6 +187,12 @@ public sealed class FarmController : IDisposable
             openWorldSince = DateTime.MinValue;
         }
         var settled = openWorldSince != DateTime.MinValue && DateTime.UtcNow - openWorldSince >= SettleTime;
+
+        if (pendingLog != null && settled && DateTime.UtcNow - lastLogUpdate > TimeSpan.FromSeconds(1))
+        {
+            UpdatePendingLog();
+            lastLogUpdate = DateTime.UtcNow;
+        }
 
         if (pendingMeasure && settled)
         {
@@ -206,10 +228,49 @@ public sealed class FarmController : IDisposable
             stats.Tomes += LastRunGain;
             stats.Seconds += LastRunTime.TotalSeconds;
             stats.DutySeconds += (now - dutyEnteredAt).TotalSeconds;
-            config.Save();
         }
 
+        pendingLog = new RunLogEntry
+        {
+            Finished = DateTime.Now,
+            Duty = DutyName(config.TerritoryType),
+            DutySeconds = (now - dutyEnteredAt).TotalSeconds,
+            CycleSeconds = LastRunTime.TotalSeconds,
+            Tomes = LastRunGain,
+        };
+        sealsAtExit = GetSealCount();
+        bonesAtExit = GetItemCount(DuckBonesItemId);
+        config.RunLog.Add(pendingLog);
+        if (config.RunLog.Count > Configuration.MaxRunLog)
+            config.RunLog.RemoveRange(0, config.RunLog.Count - Configuration.MaxRunLog);
+        config.Save();
+
         Print($"Run #{RunsCompleted}: +{LastRunGain} in {LastRunTime:mm\\:ss} (now {GetTomestoneCount()}).");
+    }
+
+    /// <summary>Seals/Duck Bones change during AutoDuty's post-loop GC turn-in; refresh the row live.</summary>
+    private void UpdatePendingLog()
+    {
+        if (pendingLog == null) return;
+        var bones = Math.Max(0, GetItemCount(DuckBonesItemId) - bonesAtExit);
+        var sealNet = GetSealCount() - sealsAtExit;
+        pendingLog.DuckBones = bones;
+        pendingLog.SealsEarned = Math.Max(0, sealNet + bones * DuckBonesSealCost);
+    }
+
+    private void FinalizeLog()
+    {
+        if (pendingLog == null) return;
+        if (InOpenWorld()) UpdatePendingLog();
+        pendingLog = null;
+        config.Save();
+    }
+
+    public static string DutyName(uint territory)
+    {
+        var name = Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
+            .FirstOrDefault(c => c.TerritoryType.RowId == territory).Name.ExtractText();
+        return string.IsNullOrEmpty(name) ? territory.ToString() : name;
     }
 
     private bool CheckStopConditions(out string reason)

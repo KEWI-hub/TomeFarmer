@@ -1,7 +1,20 @@
+using System;
 using System.Collections.Generic;
 using Dalamud.Configuration;
 
 namespace TomeFarmer;
+
+public sealed class RunLogEntry
+{
+    public DateTime Finished { get; set; }
+    public string Duty { get; set; } = string.Empty;
+    public double DutySeconds { get; set; }
+    public double CycleSeconds { get; set; }
+    public int Tomes { get; set; }
+    /// <summary>Seals earned from GC turn-in after the run (net change + seals spent on Duck Bones).</summary>
+    public int SealsEarned { get; set; }
+    public int DuckBones { get; set; }
+}
 
 public sealed class DutyStats
 {
@@ -42,6 +55,10 @@ public sealed class Configuration : IPluginConfiguration
 
     /// <summary>Per-duty history keyed by TerritoryType, used to find the fastest farm.</summary>
     public Dictionary<uint, DutyStats> DutyStats { get; set; } = new();
+
+    /// <summary>Newest last; trimmed to <see cref="MaxRunLog"/>.</summary>
+    public List<RunLogEntry> RunLog { get; set; } = new();
+    public const int MaxRunLog = 300;
 
     public void Save() => Plugin.PluginInterface.SavePluginConfig(this);
 }

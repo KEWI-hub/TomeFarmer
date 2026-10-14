@@ -57,6 +57,51 @@ public sealed class MainWindow : Window
         }
 
         DrawStats();
+        DrawRunLog();
+    }
+
+    private void DrawRunLog()
+    {
+        if (!ImGui.CollapsingHeader("Run log", ImGuiTreeNodeFlags.DefaultOpen)) return;
+        var log = config.RunLog;
+        if (log.Count == 0) { ImGui.TextDisabled("No runs logged yet."); return; }
+
+        var dutyTotal = TimeSpan.FromSeconds(log.Sum(e => e.DutySeconds));
+        ImGui.TextUnformatted($"Total: {log.Count} runs   {(int)dutyTotal.TotalHours}h {dutyTotal.Minutes}m in duty   " +
+                              $"Tome +{log.Sum(e => e.Tomes)}   Seals +{log.Sum(e => e.SealsEarned)}   Duck Bones +{log.Sum(e => e.DuckBones)}");
+
+        using (var table = ImRaii.Table("##runlog", 7,
+                   ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.ScrollY,
+                   new Vector2(-1, 200)))
+        {
+            if (table)
+            {
+                ImGui.TableSetupScrollFreeze(0, 1);
+                ImGui.TableSetupColumn("Finished");
+                ImGui.TableSetupColumn("Duty");
+                ImGui.TableSetupColumn("In duty");
+                ImGui.TableSetupColumn("Cycle");
+                ImGui.TableSetupColumn("Tome");
+                ImGui.TableSetupColumn("Seals");
+                ImGui.TableSetupColumn("Duck Bones");
+                ImGui.TableHeadersRow();
+
+                for (var i = log.Count - 1; i >= 0; i--)
+                {
+                    var e = log[i];
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(e.Finished.ToString("dd/MM HH:mm"));
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(e.Duty);
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"{TimeSpan.FromSeconds(e.DutySeconds):mm\\:ss}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"{TimeSpan.FromSeconds(e.CycleSeconds):mm\\:ss}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted($"+{e.Tomes}");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(e.SealsEarned > 0 ? $"+{e.SealsEarned}" : "-");
+                    ImGui.TableNextColumn(); ImGui.TextUnformatted(e.DuckBones > 0 ? $"+{e.DuckBones}" : "-");
+                }
+            }
+        }
+
+        if (ImGui.SmallButton("Clear log")) { log.Clear(); config.Save(); }
     }
 
     private void DrawStats()
